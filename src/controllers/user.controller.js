@@ -98,20 +98,20 @@ const registerUser = asyncHandeler( async (req, res) => {
 
 const loginUser = asyncHandeler(async(req,res)=>{
     const {username,password,email}=req.body;
-    if (!username || ! email) {
-        throw new ApiError(400,"atleast on is required")
+    if (! username || ! email) {
+        throw new ApiError(400,"At least one is required")
     }
     const user=await User.findOne({
         $or:[{username},{email}]})
 if(!user){
     throw new ApiError(400,"user is not on is db")
 }
-const isPasswordValid=await user.ispassword(password)
+const isPasswordValid = await user.isPasswordCorrect(password)
 if(!isPasswordValid){
     throw new ApiError(400,"Password invalid ")
 }
 const {accessToken,refreshToken}=await generateAccessAndRefreshToken(user._id)
-const loggedInUser=await User.findById(user_id).select("-password -refreshToken")
+const loggedInUser=await User.findById(user._id).select("-password -refreshToken")
 const options={
     httpOnly:true,
     secure:true
@@ -125,8 +125,6 @@ return res.status(200)
     }
     ,"user logged in successfully")
     )
-
-
 })
 
 const logOutUser=asyncHandeler(async(req,res)=>{
