@@ -4,6 +4,7 @@ import { ApiError } from '../utils/ApiError.js';
 import { User } from '../models/user.model.js';
 import { uploadOnClodinary } from '../utils/cloudinary.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
+import jwt from "jsonwebtoken"
 import { response } from 'express';
 // import { response } from 'express';
 // 
@@ -106,7 +107,7 @@ const loginUser = asyncHandeler(async(req,res)=>{
 if(!user){
     throw new ApiError(400,"user is not on is db")
 }
-const isPasswordValid = await user.isPasswordCorrect(password)
+const isPasswordValid = await User.isPasswordCorrect(password)
 if(!isPasswordValid){
     throw new ApiError(400,"Password invalid ")
 }
@@ -144,5 +145,37 @@ const logOutUser=asyncHandeler(async(req,res)=>{
     }
     return res.status(200).clearCookie("accessToken",options).clearCookie("refreshToken",options).json(new ApiResponse(200,{},"uer loggoed out successfully"))
 })
+ const refreshAccessToken=asyncHandeler(async(req,res)=>{
+    const incomingRefeshToken=req.cookies.refreshToken || req.body.refreshToken
+    if (!incomingRefeshToken) {
+     throw new ApiError(400,"unauthorized request")    
+    }
+    const decodedRefreshToken=jwt.verify(incomingRefeshToken,process.env.REFRESH_TOKEN_SECRET)
+    const user=User.findById(decodedRefreshToken._id)
+    if (!user) {
+        throw new ApiError(400,"invalid refreshtoken")
+    }
+    if (incomingRefeshToken !== user?.refreshToken) {
+        throw new ApiError(400,"invalid refresh token or expired")
+    }
+     const {accessToken,newRewrefreshToken}=await generateAccessAndRefreshToken(user._id)
+    const options={
+        httpOnly:true,
+        secure:true
+     }
+     return res.status(200)
+     .cookie("accessToken",accessToken,options)
+     .cookie("refreshToken",newRewrefreshToken,options)
+     .json(new ApiResponse(200,
+        {
+           accessToken,newRewrefreshToken 
+        },"access token refreshed"
+     ))
+     
 
-export { registerUser,loginUser,logOutUser };
+ })
+ 
+
+
+
+export { registerUser,loginUser,logOutUser,refreshAccessToken };
